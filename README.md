@@ -1,109 +1,127 @@
-# Finance App (MVP / 0001_core)
+# Finance App — Personal Finance Platform (MVP / 0001_core)
 
-Aplicación financiera personal **SaaS-ready** enfocada en:
-- Control explícito de movimientos
-- Trazabilidad total
-- Correctitud por encima de conveniencia
-- Sin estado inferido (p. ej. sin balances almacenados)
+Personal finance application designed as a **SaaS-ready backend system**, with a strong emphasis on **data correctness, auditability, and explicit state**.
 
-## Stack
-- **API:** FastAPI (Python)
-- **DB:** PostgreSQL
-- **ORM:** SQLAlchemy
-- **Migraciones:** Alembic
-- **Dependencias:** uv (`pyproject.toml` + `uv.lock`)
-- **Infra dev:** Docker Compose (API + DB)
+This project is intentionally used as a **learning and experimentation platform** to design production-oriented backend systems, focusing on:
+- correct data modeling
+- traceability
+- migrations discipline
+- cloud-readiness (Docker + CI/CD friendly)
+
+> Status: **Active development**  
+> Backend core and schema are stable; authentication, imports, and reporting are evolving.
 
 ---
 
-## Principios de datos (MVP)
+## Core principles
+
 - `correctness_over_convenience`
 - `explicit_data_only`
 - `auditability_first`
 - `no_inferred_state`
 
-### Estrategias clave
-- **IDs:** UUID generados por la aplicación
-- **Balances:** derivados desde `transactions` (no se almacenan columnas de balance)
-- **Transfers:** estrategia de **2 movimientos** (expense + income) vinculados por `transfer_group_id`
-- **Categorías:** soporta global templates (`user_id = NULL`) y categorías del usuario (`user_id != NULL`)
+These principles drive all design decisions in the system.
 
 ---
 
-## Estructura del repo (alto nivel)
-- `apps/api/` → FastAPI, modelos, Alembic, migraciones
-- `infra/` → Dockerfiles y docker-compose
-- `.dockerignore` / `.gitignore` → higiene del repo
+## Key data strategies
+
+- **IDs:** UUIDs generated at application level
+- **Balances:** never stored — always derived from `transactions`
+- **Transfers:** modeled as **two linked transactions** (expense + income) via `transfer_group_id`
+- **Categories:** supports both global templates (`user_id IS NULL`) and user-specific categories
 
 ---
 
-## Requisitos
-- Docker + Docker Compose
-- (Opcional) `uv` local si quieres correr fuera de Docker
+## Tech stack
+
+- **API:** FastAPI (Python)
+- **Database:** PostgreSQL
+- **ORM:** SQLAlchemy
+- **Migrations:** Alembic
+- **Dependencies:** uv (`pyproject.toml`, `uv.lock`)
+- **Dev infrastructure:** Docker Compose (API + DB)
 
 ---
 
-## Variables de entorno
-Crea un `.env` (no se commitea) basado en `.env.example`.
+## Repository structure (high-level)
 
-Ejemplo (ajusta a tu entorno):
+- `apps/api/` → FastAPI app, models, Alembic migrations
+- `infra/` → Dockerfiles and Docker Compose
+- `.dockerignore` / `.gitignore` → repository hygiene
+
+---
+
+## Requirements
+
+- Docker + Docker Compose  
+- (Optional) `uv` locally if running outside containers
+
+---
+
+## Environment variables
+
+Create a `.env` file (not committed) based on `.env.example`.
+
+Required variables:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_DB`
 - `DATABASE_URL`
 
-**Nota:** `DATABASE_URL` debe apuntar al host de Postgres visto desde el contenedor `api`.
-En Docker Compose normalmente sería algo como:
-`postgresql+psycopg://<user>:<pass>@db:5432/<db>`
+> `DATABASE_URL` must point to the Postgres host as seen from the `api` container  
+> Example:
+> `postgresql+psycopg://<user>:<pass>@db:5432/<db>`
 
 ---
 
-## Levantar en desarrollo (Docker)
-Desde la raíz del repo:
+## Running locally (Docker)
+
+From the repository root:
 
 ```bash
 docker compose up --env-file ../.env -d --build
 ````
 
-El contenedor `api` ejecuta:
+The `api` container automatically:
 
-1. `alembic upgrade head`
-2. `uvicorn ... --reload`
+1. Applies migrations (`alembic upgrade head`)
+2. Starts the API with hot-reload
 
-API disponible en:
+API available at:
 
 * [http://localhost:8000](http://localhost:8000)
 
 ---
 
-## Comandos útiles
+## Useful commands
 
-### Ver logs
+### View logs
 
 ```bash
 docker compose logs --env-file ../.env -f api
 docker compose logs --env-file ../.env -f db
 ```
 
-### Correr migraciones manualmente (sin reiniciar)
+### Run migrations manually
 
 ```bash
 docker compose --env-file ../.env exec api sh -lc "uv run alembic upgrade head"
 ```
 
-### Ver versión aplicada por Alembic
+### Check Alembic version
 
 ```bash
 docker compose --env-file ../.env exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT * FROM alembic_version;"
 ```
 
-### Listar tablas
+### List tables
 
 ```bash
 docker compose --env-file ../.env exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c "\dt"
 ```
 
-### Reset completo de DB (DEV ONLY — borra datos)
+### Reset database (DEV ONLY — destructive)
 
 ```bash
 docker compose down -v
@@ -112,9 +130,9 @@ docker compose up --env-file ../.env -d --build
 
 ---
 
-## Estado del schema (0001_core)
+## Current schema state (0001_core)
 
-Tablas:
+Tables:
 
 * `users`
 * `accounts`
@@ -122,30 +140,31 @@ Tablas:
 * `transactions`
 * `alembic_version`
 
-Índices/constraints relevantes:
+Relevant constraints and indexes:
 
-* `transactions`: índices compuestos `(user_id, date)` y `(account_id, date)`
-* `transactions`: unique compuesto `(user_id, hash_dedupe)`
-* `categories`: unique parcial global por `name` cuando `user_id IS NULL`
-* `categories`: unique parcial por usuario `(user_id, name)` cuando `user_id IS NOT NULL`
-
----
-
-## Contribución / Git workflow (recomendado)
-
-* Commits pequeños y “verticales” por capacidad.
-* Evitar `sudo git ...` (problemas de permisos).
-* Para cambios grandes, trabajar en ramas:
-
-  * `feat/...`, `chore/...`, `fix/...`
+* `transactions`: composite indexes `(user_id, date)` and `(account_id, date)`
+* `transactions`: unique `(user_id, hash_dedupe)`
+* `categories`: partial unique index for global categories (`user_id IS NULL`)
+* `categories`: user-scoped unique `(user_id, name)`
 
 ---
 
-## Roadmap (alto nivel)
+## Roadmap (high-level)
 
-* CRUD
-* 0002_auth: refresh tokens, hardening auth
-* Import CSV: dry-run, dedupe user-scoped, mapping de categorías
-* Reportes: summary / by_account / by_category (sin balances almacenados)
+* CRUD completion
+* `0002_auth`: refresh tokens, auth hardening
+* CSV import with dry-run and deduplication
+* Reports: summary / by_account / by_category (derived data only)
 
-````
+---
+
+## Why this project exists
+
+This project is not intended to be a feature-complete finance app.
+Its primary goal is to **practice backend system design decisions under real constraints**, including:
+
+* schema evolution
+* migration safety
+* explicit data modeling
+* correctness guarantees
+* future cloud deployment readiness
