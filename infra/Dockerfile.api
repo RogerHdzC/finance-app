@@ -1,0 +1,23 @@
+FROM python:3.14-slim
+
+# uv (Astral) para manejo de deps (rápido y reproducible)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# Dependencias primero (mejor cache)
+COPY apps/api/pyproject.toml /app/pyproject.toml
+COPY apps/api/uv.lock /app/uv.lock
+
+# Instala deps en entorno gestionado por uv
+RUN uv sync --locked --no-dev
+
+# Copia configuración de alembic + código
+COPY apps/api/alembic.ini /app/alembic.ini
+COPY apps/api/alembic /app/alembic
+COPY apps/api/app /app/app
+
+EXPOSE 8000
+
+# Importante: ejecuta vía uv para asegurar PATH/venv correctos
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
