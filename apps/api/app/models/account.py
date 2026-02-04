@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 from enum import Enum
 from decimal import Decimal
-from app.db.base import Base
+from app.db.base_class import Base
 from app.models.mixin.timestamp import TimestampMixin
 from sqlalchemy import String, Numeric, Enum as SAEnum
 from sqlalchemy import ForeignKey
