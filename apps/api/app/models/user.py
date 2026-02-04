@@ -1,7 +1,7 @@
 import uuid
 from uuid import UUID
 
-from app.db.base import Base
+from app.db.base_class import Base
 from app.models.mixin.timestamp import TimestampMixin
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID

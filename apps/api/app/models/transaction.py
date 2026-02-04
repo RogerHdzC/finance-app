@@ -5,7 +5,7 @@ from enum import Enum
 from decimal import Decimal
 from typing import Any
 
-from app.db.base import Base
+from app.db.base_class import Base
 from app.models.mixin.timestamp import TimestampMixin
 from sqlalchemy import String, Numeric, Enum as SAEnum, Index, UniqueConstraint
 from sqlalchemy import ForeignKey
