@@ -7,7 +7,21 @@ requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.18.1",
     "fastapi[standard]>=0.128.0",
+    "passlib[argon2]>=1.7.4",
     "psycopg[binary]>=3.3.2",
+    "pytest>=9.0.2",
     "sqlalchemy>=2.0.46",
     "uvicorn>=0.40.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+    "watchfiles>=1.1.1",
+]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = [
+  "ignore:Accessing argon2\\.__version__ is deprecated:DeprecationWarning:passlib\\.handlers\\.argon2",
 ]
