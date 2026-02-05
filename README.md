@@ -1,5 +1,4 @@
-# Finance App — Personal Finance Platform (MVP / 0001_core)
-
+# Finance App — Personal Finance Platform
 Personal finance application designed as a **SaaS-ready backend system**, with a strong emphasis on **data correctness, auditability, and explicit state**.
 
 This project is intentionally used as a **learning and experimentation platform** to design production-oriented backend systems, focusing on:
@@ -8,8 +7,9 @@ This project is intentionally used as a **learning and experimentation platform*
 - migrations discipline
 - cloud-readiness (Docker + CI/CD friendly)
 
-> Status: **Active development**  
-> Backend core and schema are stable; authentication, imports, and reporting are evolving.
+> **Status:** Active development
+> Core architecture and data model are stable.
+> Authentication and advanced features are in progress.
 
 ---
 
@@ -26,29 +26,77 @@ These principles drive all design decisions in the system.
 
 ## Key data strategies
 
-- **IDs:** UUIDs generated at application level
+- **IDs:** UUIDs generated at database level
 - **Balances:** never stored — always derived from `transactions`
 - **Transfers:** modeled as **two linked transactions** (expense + income) via `transfer_group_id`
 - **Categories:** supports both global templates (`user_id IS NULL`) and user-specific categories
 
 ---
 
-## Tech stack
+## Architecture
 
-- **API:** FastAPI (Python)
-- **Database:** PostgreSQL
-- **ORM:** SQLAlchemy
-- **Migrations:** Alembic
-- **Dependencies:** uv (`pyproject.toml`, `uv.lock`)
-- **Dev infrastructure:** Docker Compose (API + DB)
+The system follows a **layered backend architecture**:
+
+* **API layer** – FastAPI routers
+* **Service layer** – domain logic and invariants
+* **Schemas** – request/response validation
+* **Models** – SQLAlchemy ORM
+* **Domain errors** – explicitly modeled and mapped to HTTP responses
+* **Core modules** – cross-cutting concerns (security, OpenAPI, dependencies)
+
+The application is initialized via an **application factory** with centralized error handling.
 
 ---
 
-## Repository structure (high-level)
+## Error handling
 
-- `apps/api/` → FastAPI app, models, Alembic migrations
-- `infra/` → Dockerfiles and Docker Compose
-- `.dockerignore` / `.gitignore` → repository hygiene
+Domain-level errors are raised from the service layer and mapped to HTTP responses using a unified format:
+
+```json
+{
+  "code": "string",
+  "detail": "string",
+  "meta": {}
+}
+```
+
+This ensures consistent, predictable error contracts for API consumers.
+
+---
+
+## Tech stack
+
+* **Language:** Python 3.14
+* **API framework:** FastAPI
+* **Database:** PostgreSQL
+* **ORM:** SQLAlchemy 2.x
+* **Migrations:** Alembic
+* **Password hashing:** Argon2 (`passlib`)
+* **Dependency management:** `uv`
+* **Testing:** pytest + coverage
+* **Containerization:** Docker & Docker Compose
+
+---
+
+## Repository structure (simplified)
+
+```
+apps/api/
+├── app/
+│   ├── core/
+│   ├── db/
+│   ├── exceptions/
+│   ├── models/
+│   ├── routers/
+│   ├── schemas/
+│   └── services/
+├── alembic/
+└── tests/
+
+infra/
+├── docker-compose.yml
+└── dev-entrypoint.sh
+```
 
 ---
 
@@ -80,7 +128,7 @@ Required variables:
 From the repository root:
 
 ```bash
-docker compose up --env-file ../.env -d --build
+docker compose --env-file ../.env up -d --build
 ````
 
 The `api` container automatically:
@@ -99,8 +147,8 @@ API available at:
 ### View logs
 
 ```bash
-docker compose logs --env-file ../.env -f api
-docker compose logs --env-file ../.env -f db
+docker compose --env-file ../.env logs -f api
+docker compose --env-file ../.env logs -f db
 ```
 
 ### Run migrations manually
@@ -125,8 +173,26 @@ docker compose --env-file ../.env exec db psql -U $POSTGRES_USER -d $POSTGRES_DB
 
 ```bash
 docker compose down -v
-docker compose up --env-file ../.env -d --build
+docker compose --env-file ../.env up -d --build
 ```
+
+---
+
+## Testing
+
+The project includes a structured test suite covering:
+
+* API endpoints
+* service/domain logic
+* domain-level errors
+
+Run tests with coverage:
+
+```bash
+docker compose exec api sh -lc "uv run pytest --cov=app"
+```
+
+Current coverage is **~94%**.
 
 ---
 
@@ -151,6 +217,7 @@ Relevant constraints and indexes:
 
 ## Roadmap (high-level)
 
+* Authentication & authorization
 * CRUD completion
 * `0002_auth`: refresh tokens, auth hardening
 * CSV import with dry-run and deduplication
