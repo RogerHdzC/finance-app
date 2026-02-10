@@ -135,10 +135,99 @@ jobs:
           echo "PR title does not follow the required format."
           exit 1
 
+  branch-up-to-date:
+    name: policy / branch-up-to-date
+    runs-on: ubuntu-latest
+    if: ${{ contains(fromJSON('["develop","master"]'), github.event.pull_request.base.ref) }}
+
+    permissions:
+        contents: read
+        pull-requests: write
+
+    steps:
+      - name: Compare head vs base (behind check)
+        id: compare
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const base = context.payload.pull_request.base.ref;   // develop | master
+            const head = context.payload.pull_request.head.ref;
+
+            const res = await github.rest.repos.compareCommits({
+              owner,
+              repo,
+              base,
+              head,
+            });
+
+            const behindBy = res.data.behind_by;
+            core.info(`Base branch: ${base}`);
+            core.info(`Head branch: ${head}`);
+            core.info(`Commits behind base: ${behindBy}`);
+
+            core.setOutput("behind_by", String(behindBy));
+            core.setOutput("base", base);
+            core.setOutput("head", head);
+
+      - name: Sticky comment explaining how to update branch
+        if: ${{ steps.compare.outputs.behind_by != '0' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: Branch is not up to date
+          recreate: true
+          message: |
+            **This branch is not up to date with the base branch.**
+
+            - **Base:** `${{ steps.compare.outputs.base }}`
+            - **Head:** `${{ steps.compare.outputs.head }}`
+            - **Behind by:** `${{ steps.compare.outputs.behind_by }}` commit(s)
+
+            ---
+            ## How to fix it
+
+            ### If the base branch is `develop`
+            You can **merge or rebase** `develop` into your branch:
+
+            **Option A — Merge (simpler):**
+            ```bash
+            git fetch origin
+            git merge origin/develop
+            git push
+            ```
+
+            **Option B — Rebase (cleaner):**
+            ```bash
+            git fetch origin
+            git rebase origin/develop
+            git push --force-with-lease
+            ```
+
+            ---
+            ### If the base branch is `master`
+            **Rebase is required** (keep linear history for release):
+
+            ```bash
+            git fetch origin
+            git checkout develop
+            git rebase origin/master
+            git push --force-with-lease
+            ```
+
+            ---
+            After pushing, this check will re-run and should pass.
+
+      - name: Fail if branch is behind base
+        if: ${{ steps.compare.outputs.behind_by != '0' }}
+        run: |
+          echo "ERROR: Head branch '${{ steps.compare.outputs.head }}' is behind base '${{ steps.compare.outputs.base }}' by ${{ steps.compare.outputs.behind_by }} commit(s)."
+          exit 1
+
   version-bump:
     name: version / bump-check
     runs-on: ubuntu-latest
-    needs: title-lint
+    if: ${{ github.event.pull_request.base.ref == 'develop' }}
+    needs: [title-lint, branch-up-to-date]
 
     steps:
       - name: Checkout PR branch
