@@ -1,4 +1,3 @@
-```md
 ## Summary
 **What changed and why?**
 - Brief, clear description of the change.
@@ -46,12 +45,13 @@ Examples:
 
 - [ ] Updated `apps/api/pyproject.toml`
 - [ ] Version bump matches the PR type rules
+- [ ] Branch up to date with master
 
 ---
 
 ## Testing
 - [ ] Tests executed locally:
-  ```bash
+```bash
   docker compose exec api uv run pytest
 ````
 
@@ -82,6 +82,4 @@ Example:
 BREAKING CHANGE:
 - Removed `/api/v1/legacy-users`
 - Clients must migrate to `/api/v2/users`
-```
-
 ```
