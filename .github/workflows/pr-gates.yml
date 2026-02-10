@@ -164,7 +164,4 @@ jobs:
 
       - name: Run version bump validation
         run: |
-          python scripts/ci/validate_version_bump.py \
-            --head-path apps/api/pyproject.toml \
-            --base-toml "${{ steps.base_toml.outputs.content }}" \
-            --pr-type "${{ needs.title-lint.outputs.pr_type }}"
+          python .github/tooling/ci/validate_version_bump.py --head-path apps/api/pyproject.toml --base-toml "${{ steps.base_toml.outputs.content }}" --pr-type "${{ needs.title-lint.outputs.pr_type }}"
