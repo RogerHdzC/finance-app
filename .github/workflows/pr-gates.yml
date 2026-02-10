@@ -158,3 +158,18 @@ jobs:
             --head-path apps/api/pyproject.toml \
             --base-path /tmp/base-pyproject.toml \
             --pr-type "${{ needs.title-lint.outputs.pr_type }}"
+
+  source-branch-policy:
+    name: policy / allow-only-develop-to-master
+    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.base.ref == 'master' }}
+    steps:
+      - name: Enforce develop -> master only
+        run: |
+          echo "Base: ${{ github.event.pull_request.base.ref }}"
+          echo "Head: ${{ github.event.pull_request.head.ref }}"
+          if [ "${{ github.event.pull_request.head.ref }}" != "develop" ]; then
+            echo "ERROR: Only PRs from 'develop' into 'master' are allowed."
+            exit 1
+          fi
+          echo "OK: PR is develop -> master."
