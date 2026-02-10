@@ -146,22 +146,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read BASE pyproject.toml
-        id: base_toml
+      - name: Read BASE pyproject.toml into temp file
         shell: bash
         run: |
           BASE_REF="${{ github.event.pull_request.base.ref }}"
-          echo "Using base ref: $BASE_REF"
-
-          BASE_TOML=$(git show "origin/${BASE_REF}:apps/api/pyproject.toml") || {
-            echo "ERROR: Could not read pyproject.toml from base branch: ${BASE_REF}"
-            exit 1
-          }
-
-          echo "content<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$BASE_TOML" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          git show "origin/${BASE_REF}:apps/api/pyproject.toml" > /tmp/base-pyproject.toml
 
       - name: Run version bump validation
         run: |
-          python .github/tooling/ci/validate_version_bump.py --head-path apps/api/pyproject.toml --base-toml "${{ steps.base_toml.outputs.content }}" --pr-type "${{ needs.title-lint.outputs.pr_type }}"
+          python .github/tooling/ci/validate_version_bump.py \
+            --head-path apps/api/pyproject.toml \
+            --base-path /tmp/base-pyproject.toml \
+            --pr-type "${{ needs.title-lint.outputs.pr_type }}"
