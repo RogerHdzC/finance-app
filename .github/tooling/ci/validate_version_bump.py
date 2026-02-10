@@ -68,16 +68,16 @@ def extract_version(toml_obj: dict) -> str:
 def normalize_pr_type(pr_type: str) -> Tuple[str, bool]:
     """
     Returns: (type, breaking)
-    Supports: feat, fix, chore, feat!, fix!, chore!
+    Supports: feat, fix, chore, docs, refactor, test, revert, feat!, fix!, chore!, docs!, refactor!, test!, revert!
     Extendable for docs/refactor/test/revert later.
     """
     pr_type = pr_type.strip()
     breaking = pr_type.endswith("!")
     base_type = pr_type[:-1] if breaking else pr_type
 
-    allowed = {"feat", "fix", "chore"}
+    allowed = {"feat", "fix", "chore", "docs", "refactor", "test", "revert"}
     if base_type not in allowed:
-        raise ValueError(f"Unsupported pr type '{pr_type}'. Allowed: feat, fix, chore (optionally with '!').")
+        raise ValueError(f"Unsupported pr type '{pr_type}'. Allowed: feat, fix, chore, docs, refactor, test, revert (optionally with '!').")
     return base_type, breaking
 
 
