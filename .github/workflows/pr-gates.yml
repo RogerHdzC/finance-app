@@ -1,0 +1,160 @@
+name: PR Gates
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches:
+      - master
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  title-lint:
+    name: title / lint
+    runs-on: ubuntu-latest
+
+    outputs:
+      pr_type: ${{ steps.extract.outputs.type }}
+
+    steps:
+      - name: Validate PR title against contract regex
+        id: validate
+        shell: bash
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          REGEX='^(feat|fix|docs|refactor|test|chore|revert)(!)?(\([a-z0-9-]+\))?: .+'
+
+          if [[ "$TITLE" =~ $REGEX ]]; then
+            echo "success=true" >> "$GITHUB_OUTPUT"
+            echo "message=PR title follows the required Conventional Commit format." >> "$GITHUB_OUTPUT"
+          else
+            echo "success=false" >> "$GITHUB_OUTPUT"
+            echo "message=PR title does not follow the required format." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Add label when title is invalid
+        if: ${{ steps.validate.outputs.success == 'false' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const label = { name: "Title needs formatting", color: "EEEEEE" };
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: label.name });
+            } catch (e) {
+              if (e.status === 404) {
+                await github.rest.issues.createLabel({ owner, repo, ...label });
+              } else {
+                throw e;
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number,
+              labels: [label.name],
+            });
+
+      - name: Remove label when title is valid
+        if: ${{ steps.validate.outputs.success == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const labelName = "Title needs formatting";
+
+            try {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number, name: labelName });
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+
+      - name: Sticky comment when title is invalid
+        if: ${{ steps.validate.outputs.success == 'false' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: PR Title Format Warning
+          recreate: true
+          message: |
+            ⚠️ **PR title does not follow the required format.** ⚠️
+
+            Required regex:
+            `^(feat|fix|docs|refactor|test|chore|revert)(!)?(\\([a-z0-9-]+\\))?: .+`
+
+            Examples:
+            - `feat(ci): add PR gates`
+            - `fix(db): handle unique constraint`
+            - `docs(readme): update contribution section`
+            - `refactor(auth): simplify dependency graph`
+            - `test(api): add user router tests`
+            - `chore(ci): update workflows`
+            - `revert: revert PR #123`
+            - `feat!(api): breaking change`
+
+      - name: Sticky comment when title is valid
+        if: ${{ steps.validate.outputs.success == 'true' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: PR Title Format Warning
+          recreate: true
+          message: |
+            ✅ PR title follows the required Conventional Commit format.
+
+      - name: Extract PR type for version gate
+        id: extract
+        if: ${{ steps.validate.outputs.success == 'true' }}
+        shell: bash
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+
+          # Must match the same contract regex
+          if [[ "$TITLE" =~ ^(feat|fix|docs|refactor|test|chore|revert)(!)?(\([a-z0-9-]+\))?:\  ]]; then
+            TYPE="${BASH_REMATCH[1]}"
+            BANG="${BASH_REMATCH[2]}"
+            if [[ -n "$BANG" ]]; then
+              TYPE="${TYPE}!"
+            fi
+            echo "type=$TYPE" >> "$GITHUB_OUTPUT"
+            echo "Detected PR type: $TYPE"
+          else
+            echo "ERROR: Could not extract type even though title was marked valid."
+            exit 1
+          fi
+
+      - name: Fail workflow if PR title is invalid
+        if: ${{ steps.validate.outputs.success == 'false' }}
+        run: |
+          echo "PR title does not follow the required format."
+          exit 1
+
+  version-bump:
+    name: version / bump-check
+    runs-on: ubuntu-latest
+    needs: title-lint
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read BASE pyproject.toml into temp file
+        shell: bash
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git show "origin/${BASE_REF}:apps/api/pyproject.toml" > /tmp/base-pyproject.toml
+
+      - name: Run version bump validation
+        run: |
+          python .github/tooling/ci/validate_version_bump.py \
+            --head-path apps/api/pyproject.toml \
+            --base-path /tmp/base-pyproject.toml \
+            --pr-type "${{ needs.title-lint.outputs.pr_type }}"
