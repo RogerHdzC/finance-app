@@ -226,6 +226,7 @@ jobs:
   version-bump:
     name: version / bump-check
     runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.base.ref == 'develop' }}
     needs: [title-lint, branch-up-to-date]
 
     steps:
