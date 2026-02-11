@@ -1,0 +1,16 @@
+meta {
+  name: GET BY ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://{{url}}:{{port}}/{{version}}/users/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
