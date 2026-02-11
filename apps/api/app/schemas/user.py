@@ -1,4 +1,5 @@
 from pydantic import Field, EmailStr, BaseModel, ConfigDict
+from typing import List
 from uuid import UUID
 from datetime import datetime
 from app.schemas.timeStamp import TimeStampBase
@@ -25,3 +26,17 @@ class UserRead(TimeStampBase):
     lastname: str
     username: str
     email: str
+
+class PageMeta(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    total_pages: int
+
+class UsersResponse(BaseModel):
+    """
+    Docstring para UsersResponse
+    Standard response model for user-related endpoints.
+    """
+    user: List[UserRead] = Field(default_factory=list, description="List of users")
+    meta: PageMeta
