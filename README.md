@@ -19,6 +19,7 @@ This project is intentionally used as a **learning and experimentation platform*
 - `explicit_data_only`
 - `auditability_first`
 - `no_inferred_state`
+* `security_by_design`
 
 These principles drive all design decisions in the system.
 
@@ -48,6 +49,59 @@ The application is initialized via an **application factory** with centralized e
 
 ---
 
+# API
+
+## Base Path
+
+```
+/api/v1
+```
+
+## Routers
+
+* `users`
+* `auth`
+
+---
+
+# Authentication Model (0002_auth)
+
+Authentication has been introduced with:
+
+## Access Token
+
+* JWT Bearer token
+* Signed with configurable algorithm
+* Includes:
+
+  * issuer (`iss`)
+  * audience (`aud`)
+  * expiration
+* Required for protected endpoints
+
+## Refresh Token
+
+* Opaque token
+* Stored **hashed** in database
+* Rotation configurable via `JWT_REFRESH_ROTATE`
+* Supports:
+
+  * revocation
+  * expiration tracking
+  * replacement chaining (`replaced_by_id`)
+
+---
+
+# Protected Endpoints
+
+Require valid JWT:
+
+* `GET /users`
+* `GET /users/{id}`
+* `DELETE /users/{id}`
+
+---
+
 ## Error handling
 
 Domain-level errors are raised from the service layer and mapped to HTTP responses using a unified format:
@@ -55,12 +109,23 @@ Domain-level errors are raised from the service layer and mapped to HTTP respons
 ```json
 {
   "code": "string",
-  "detail": "string",
-  "meta": {}
+  "message": "string",
+  "details": null,
+  "trace_id": "string"
 }
 ```
 
-This ensures consistent, predictable error contracts for API consumers.
+## Validation Handling
+
+* FastAPI `RequestValidationError` → `422 VALIDATION_ERROR`
+* Domain-level `ValidationError` → `422 VALIDATION_ERROR`
+* DomainError subclasses mapped explicitly to HTTP status codes
+
+This ensures:
+
+* predictable error surface
+* clean API contract
+* separation of domain and transport concerns
 
 ---
 
@@ -69,8 +134,10 @@ This ensures consistent, predictable error contracts for API consumers.
 * **Language:** Python 3.14
 * **API framework:** FastAPI
 * **Database:** PostgreSQL
+* **Test DB:** SQLite in-memory
 * **ORM:** SQLAlchemy 2.x
 * **Migrations:** Alembic
+* **JWT:** pyjwt
 * **Password hashing:** Argon2 (`passlib`)
 * **Dependency management:** `uv`
 * **Testing:** pytest + coverage
@@ -89,7 +156,8 @@ apps/api/
 │   ├── models/
 │   ├── routers/
 │   ├── schemas/
-│   └── services/
+│   ├── services/
+│   └── security/
 ├── alembic/
 └── tests/
 
@@ -112,10 +180,14 @@ infra/
 Create a `.env` file (not committed) based on `.env.example`.
 
 Required variables:
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_DB`
-- `DATABASE_URL`
+* `DATABASE_URL`
+* `JWT_SECRET_KEY`
+* `JWT_ALGORITHM`
+* `JWT_EXPIRATION_DELTA_SECONDS`
+* `JWT_ISSUER`
+* `JWT_AUDIENCE`
+* `JWT_REFRESH_EXPIRATION_SECONDS`
+* `JWT_REFRESH_ROTATE`
 
 > `DATABASE_URL` must point to the Postgres host as seen from the `api` container  
 > Example:
@@ -182,9 +254,12 @@ docker compose --env-file ../.env up -d --build
 
 The project includes a structured test suite covering:
 
-* API endpoints
-* service/domain logic
-* domain-level errors
+* API tests
+* Service layer tests
+* Auth tests
+* Refresh token service tests
+* Dependency tests
+* DB metadata tests
 
 Run tests with coverage:
 
@@ -198,40 +273,77 @@ Current coverage is **~94%**.
 
 ## Current schema state (0001_core)
 
-Tables:
+## 0001_core
 
-* `users`
-* `accounts`
-* `categories`
-* `transactions`
-* `alembic_version`
+* users
+* accounts
+* categories
+* transactions
+* alembic_version
 
-Relevant constraints and indexes:
+## 0002_auth (in progress)
 
-* `transactions`: composite indexes `(user_id, date)` and `(account_id, date)`
-* `transactions`: unique `(user_id, hash_dedupe)`
-* `categories`: partial unique index for global categories (`user_id IS NULL`)
-* `categories`: user-scoped unique `(user_id, name)`
+* refresh_tokens table added
+* JWT authentication
+* protected endpoints
+* refresh rotation support
+
+---
+
+# Next Priority Actions
+
+* Ensure `AuthService.refresh_access_token` is defined only once
+* Validate refresh rotation logic through full test suite
+* Fix Bruno tests to use:
+
+  * `res.getStatus()`
+  * `res.getBody()`
+* Harden auth flows (token reuse detection, revoke-on-rotation)
 
 ---
 
 ## Roadmap (high-level)
 
-* Authentication & authorization
-* CRUD completion
-* `0002_auth`: refresh tokens, auth hardening
-* CSV import with dry-run and deduplication
-* Reports: summary / by_account / by_category (derived data only)
+* Auth hardening
+* Authorization layer (role/ownership validation)
+* Reports (derived-only calculations)
+* Observability (structured logging + trace IDs)
+
+---
+
+# Contribution & PR Contract
+
+This repository follows a strict pull request contract to ensure:
+
+- migration discipline
+- atomic changes
+- conventional commit consistency
+- traceable evolution of the schema
+
+See:
+
+📄 `docs/pr-contract.md`
+
+All contributions must comply with the branch naming and PR title rules defined there.
 
 ---
 
 ## Why this project exists
 
-This project is not intended to be a feature-complete finance app.
-Its primary goal is to **practice backend system design decisions under real constraints**, including:
+This is not a toy CRUD project.
 
-* schema evolution
+It exists to practice:
+
+* schema evolution discipline
 * migration safety
-* explicit data modeling
-* correctness guarantees
-* future cloud deployment readiness
+* secure authentication modeling
+* explicit domain invariants
+* production-ready backend architecture
+* CI/CD friendly workflows
+
+The objective is to build a backend system that is:
+
+* internally consistent
+* security-aware
+* evolution-friendly
+* SaaS-ready
