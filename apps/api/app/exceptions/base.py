@@ -48,4 +48,11 @@ class InternalServerError(DomainError):
     """Raised when an internal server error occurs."""
     code: str = "internal_server_error"
     detail: str = "An internal server error occurred."
+
+@dataclass
+class ValidationError(DomainError):
+    """Raised when input is syntactically valid but violates business validation rules."""
+    code: str = "VALIDATION_ERROR"
+    detail: str = "Validation failed."
+
     
