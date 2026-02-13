@@ -58,12 +58,18 @@ def status_for_domain_error(exc: DomainError) -> int:
 
 def create_app() -> FastAPI:
     
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        validate_settings()
+        yield
+    
     app = FastAPI(
         title="Finance API",
         version="0.2.0",
         description="API for managing finance-related operations.",
+        lifespan=lifespan
     )
-    # app.include_router(category.router, prefix="/api/v1")
+
     app.include_router(user.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
 
