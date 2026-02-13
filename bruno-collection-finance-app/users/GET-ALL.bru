@@ -1,11 +1,15 @@
 meta {
   name: GET-ALL
   type: http
-  seq: 1
+  seq: 10
 }
 
 get {
   url: http://{{url}}:{{port}}/{{version}}/users
   body: none
-  auth: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
 }

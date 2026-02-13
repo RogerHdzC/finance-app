@@ -1,0 +1,35 @@
+meta {
+  name: LOGIN
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://{{url}}:{{port}}/{{version}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "identifier": "{{username}}",
+    "password": "Str0ngPassw0rd!"
+  }
+}
+
+tests {
+  test("login should return tokens", function () {
+    expect(res.getStatus()).to.equal(200);
+  
+    const body = res.getBody();
+    expect(body).to.have.property("access_token");
+    expect(body).to.have.property("refresh_token");
+  
+    bru.setVar("access_token", body.access_token);
+    bru.setVar("refresh_token", body.refresh_token);
+  
+    if (body.user && body.user.id) {
+      bru.setVar("user_id", body.user.id);
+    }
+  });
+}

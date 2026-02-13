@@ -1,16 +1,21 @@
 meta {
   name: DELETE
   type: http
-  seq: 3
+  seq: 12
 }
 
 delete {
-  url: http://{{url}}:{{port}}/{{version}}/users/18d6075f-6a3b-4f1b-b2cf-41fb6f85dd68
+  url: http://{{url}}:{{port}}/{{version}}/users/{{user_id}}
   body: none
-  auth: inherit
+  auth: bearer
 }
 
-settings {
-  encodeUrl: true
-  timeout: 0
+auth:bearer {
+  token: {{access_token}}
+}
+
+tests {
+  test("delete user returns 204", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
 }

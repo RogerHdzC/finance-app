@@ -1,0 +1,32 @@
+meta {
+  name: REFRESH
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://{{url}}:{{port}}/{{version}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refresh_token": "{{refresh_token}}"
+  }
+}
+
+tests {
+  test("refresh should return new access token", function () {
+    expect(res.getStatus()).to.equal(200);
+
+    const body = res.getBody();
+    expect(body).to.have.property("access_token");
+
+    bru.setVar("access_token", body.access_token);
+
+    if (body.refresh_token) {
+      bru.setVar("refresh_token", body.refresh_token);
+    }
+  });
+}
