@@ -9,6 +9,7 @@ dependencies = [
     "fastapi[standard]>=0.128.0",
     "passlib[argon2]>=1.7.4",
     "psycopg[binary]>=3.3.2",
+    "pyjwt>=2.11.0",
     "pytest>=9.0.2",
     "sqlalchemy>=2.0.46",
     "uvicorn>=0.40.0",
