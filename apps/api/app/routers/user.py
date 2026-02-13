@@ -1,38 +1,23 @@
 from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
-from typing import List 
 from uuid import UUID
 
-from app.core.deps import get_db
+from app.core.deps import get_db, get_current_user
 from app.core.openapi import COMMON_ERROR_RESPONSES
-from app.schemas.user import (UserCreate, UserRead, UsersResponse)
+from app.schemas.user import (UserRead, UsersResponse)
 from app.services.user import UserService
 
 router = APIRouter(
     prefix="/users",
     tags=["users"],
-    responses = COMMON_ERROR_RESPONSES
+    responses = COMMON_ERROR_RESPONSES,
 )
-
-@router.post(
-    "",
-    response_model=UserRead,
-    status_code=status.HTTP_201_CREATED
-)
-def create_user(
-    payload: UserCreate,
-    db: Session = Depends(get_db)
-) -> UserRead:
-    """
-    Create a new user.
-    """
-    
-    return UserService.create_user(db=db, data=payload)
 
 @router.delete(
     "/{user_id}",
     response_model=None,
-    status_code=status.HTTP_204_NO_CONTENT
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(get_current_user)],
 )
 def delete_user(
     user_id: UUID,
@@ -46,12 +31,13 @@ def delete_user(
 @router.get(
     "",
     response_model=UsersResponse,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
 )
 def get_users(
     db: Session = Depends(get_db),
     limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
 ) -> UsersResponse:
     """
     Retrieve all users and number of total pages.
@@ -70,7 +56,8 @@ def get_users(
 @router.get(
     "/{user_id}",
     response_model=UserRead,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
 )
 def get_user_by_id(
     user_id: UUID,

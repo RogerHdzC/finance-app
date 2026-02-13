@@ -1,0 +1,36 @@
+meta {
+  name: REGISTER
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://{{url}}:{{port}}/{{version}}/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "John",
+    "lastname": "Doe",
+    "username": "jdoe_{{$timestamp}}",
+    "email": "john_{{$timestamp}}@doe.com",
+    "password": "Str0ngPassw0rd!"
+  }
+}
+
+tests {
+  test("register should succeed", function () {
+    expect(res.getStatus()).to.equal(201);
+
+    const body = res.getBody();
+    expect(body).to.have.property("id");
+    expect(body).to.have.property("username");
+    expect(body).to.have.property("email");
+
+    bru.setVar("user_id", body.id);
+    bru.setVar("username", body.username);
+    bru.setVar("email", body.email);
+  });
+}

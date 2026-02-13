@@ -1,0 +1,22 @@
+meta {
+  name: GET-BY-ID
+  type: http
+  seq: 11
+}
+
+get {
+  url: http://{{url}}:{{port}}/{{version}}/users/{{user_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+tests {
+  const json = res.json();
+  expect(res.status).to.equal(200);
+  expect(json).to.have.property('id');
+  expect(json.id).to.equal(bru.getVar('user_id'));
+}

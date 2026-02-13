@@ -8,8 +8,10 @@ def test_db_base_imports_models():
     from app.models.account import Account
     from app.models.category import Category
     from app.models.transaction import Transaction
+    from app.models.refresh_token import RefreshToken
 
     assert User.__tablename__
     assert Account.__tablename__
     assert Category.__tablename__
     assert Transaction.__tablename__
+    assert RefreshToken.__tablename__
