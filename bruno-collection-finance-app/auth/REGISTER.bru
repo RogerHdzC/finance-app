@@ -33,4 +33,9 @@ tests {
     bru.setVar("username", body.username);
     bru.setVar("email", body.email);
   });
+
+  test("response has trace header", function () {
+    const headers = res.getHeaders();
+    expect(headers).to.have.property("x-trace-id");
+  });
 }

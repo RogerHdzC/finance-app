@@ -7,9 +7,13 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError
 from contextlib import asynccontextmanager
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import Response
+
 
 from app.core.config import validate_settings
-
+from app.core.config import settings
 from app.exceptions.base import (
     DomainError,
     BadRequestError,
@@ -69,6 +73,21 @@ def create_app() -> FastAPI:
         description="API for managing finance-related operations.",
         lifespan=lifespan
     )
+    if settings.allowed_hosts:
+        app.add_middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=settings.allowed_hosts,
+        )
+    
+    if settings.allowed_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.allowed_origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Authorization", "Content-Type", "X-Trace-Id"],
+            max_age=600,
+        )
 
     app.include_router(user.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
@@ -80,7 +99,50 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         response.headers["X-Trace-Id"] = trace_id
         return response
-    
+
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response: Response = await call_next(request)
+
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["X-Frame-Options"] = "DENY"
+
+        if settings.app_env in ("prod", "production"):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+        return response
+
+    @app.middleware("http")
+    async def limit_body_size(request: Request, call_next):
+        cl = request.headers.get("content-length")
+        if cl:
+            try:
+                if int(cl) > settings.max_body_bytes:
+                    trace_id = getattr(request.state, "trace_id", uuid.uuid4().hex)
+                    return JSONResponse(
+                        status_code=413,
+                        content=make_error(
+                            code="PAYLOAD_TOO_LARGE",
+                            message="Request body too large.",
+                            details={"max_bytes": settings.max_body_bytes},
+                            trace_id=trace_id,
+                        ),
+                    )
+            except ValueError:
+                trace_id = getattr(request.state, "trace_id", uuid.uuid4().hex)
+                return JSONResponse(
+                    status_code=400,
+                    content=make_error(
+                        code="BAD_REQUEST",
+                        message="Invalid Content-Length header.",
+                        details=None,
+                        trace_id=trace_id,
+                    ),
+                )
+        return await call_next(request)
+
     @app.exception_handler(DomainError)
     async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
         trace_id = getattr(request.state, "trace_id", uuid.uuid4().hex)
@@ -109,7 +171,6 @@ def create_app() -> FastAPI:
     async def request_validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         trace_id = getattr(request.state, "trace_id", uuid.uuid4().hex)
 
-        # FastAPI gives locations like: ("body","field") or ("query","limit")
         errors = []
         for e in exc.errors():
             loc = e.get("loc", [])

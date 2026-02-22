@@ -5,11 +5,56 @@ meta {
 }
 
 get {
-  url: http://{{url}}:{{port}}/{{version}}/users
+  url: http://{{url}}:{{port}}/{{version}}/users?limit={{limit}}&offset={{offset}}
   body: none
   auth: bearer
 }
 
 auth:bearer {
   token: {{access_token}}
+}
+
+vars {
+  limit: 50
+  offset: 0
+}
+
+tests {
+  test("GET /users returns 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("response has trace + security headers", function () {
+    const headers = res.getHeaders();
+    expect(headers).to.have.property("x-trace-id");
+    expect(headers).to.have.property("x-content-type-options");
+    expect(headers).to.have.property("x-frame-options");
+    expect(headers).to.have.property("referrer-policy");
+    expect(headers).to.have.property("permissions-policy");
+  });
+
+  test("response schema: { user: UserRead[], meta: PageMeta }", function () {
+    const body = res.getBody();
+    expect(body).to.have.property("user");
+    expect(body.user).to.be.an("array");
+
+    expect(body).to.have.property("meta");
+    expect(body.meta).to.have.property("total");
+    expect(body.meta).to.have.property("limit");
+    expect(body.meta).to.have.property("offset");
+    expect(body.meta).to.have.property("total_pages");
+
+    // sanity: meta types
+    expect(body.meta.total).to.be.a("number");
+    expect(body.meta.limit).to.be.a("number");
+    expect(body.meta.offset).to.be.a("number");
+    expect(body.meta.total_pages).to.be.a("number");
+
+    // if list has at least one user, capture an id for later calls
+    if (body.user.length > 0) {
+      const first = body.user[0];
+      expect(first).to.have.property("id");
+      bru.setVar("user_id", first.id);
+    }
+  });
 }

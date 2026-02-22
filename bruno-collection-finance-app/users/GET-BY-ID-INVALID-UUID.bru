@@ -1,0 +1,29 @@
+meta {
+  name: GET-BY-ID-INVALID-UUID
+  type: http
+  seq: 22
+}
+
+get {
+  url: http://{{url}}:{{port}}/{{version}}/users/not-a-uuid
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+tests {
+  test("GET /users/{id} with invalid UUID returns 422 VALIDATION_ERROR", function () {
+    expect(res.getStatus()).to.equal(422);
+
+    const body = res.getBody();
+    expect(body).to.have.property("code", "VALIDATION_ERROR");
+    expect(body).to.have.property("message", "Validation failed.");
+    expect(body).to.have.property("details");
+    expect(body.details).to.have.property("errors");
+    expect(body.details.errors).to.be.an("array");
+    expect(body).to.have.property("trace_id");
+  });
+}

@@ -1,5 +1,5 @@
 from app.services.refresh_tokens import RefreshTokenService
-from app.exceptions.base import ConflictError
+from app.exceptions.base import UnauthorizedError
 import pytest
 
 
@@ -24,6 +24,7 @@ def test_rotate_revokes_old_token(db_session):
 
     assert new_token != token
 
-
-    with pytest.raises(ConflictError):
+    with pytest.raises(UnauthorizedError) as exc:
         RefreshTokenService.verify(db=db_session, refresh_token_plain=token)
+
+    assert exc.value.code == "TOKEN_REUSE"

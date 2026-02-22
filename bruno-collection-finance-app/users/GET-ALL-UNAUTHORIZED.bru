@@ -1,0 +1,25 @@
+meta {
+  name: GET-ALL-UNAUTHORIZED
+  type: http
+  seq: 20
+}
+
+get {
+  url: http://{{url}}:{{port}}/{{version}}/users
+  body: none
+  auth: none
+}
+
+tests {
+  test("GET /users without token returns 401 with error contract", function () {
+    expect(res.getStatus()).to.equal(401);
+
+    const body = res.getBody();
+    expect(body).to.have.property("code");
+    expect(body).to.have.property("message");
+    expect(body).to.have.property("details");
+    expect(body).to.have.property("trace_id");
+
+    expect(body.code).to.equal("UNAUTHORIZED");
+  });
+}

@@ -20,16 +20,24 @@ body:json {
 tests {
   test("login should return tokens", function () {
     expect(res.getStatus()).to.equal(200);
-  
+
     const body = res.getBody();
     expect(body).to.have.property("access_token");
     expect(body).to.have.property("refresh_token");
-  
+    expect(body).to.have.property("token_type");
+    expect(body).to.have.property("expires_in");
+    expect(body).to.have.property("user");
+
     bru.setVar("access_token", body.access_token);
     bru.setVar("refresh_token", body.refresh_token);
-  
+
     if (body.user && body.user.id) {
       bru.setVar("user_id", body.user.id);
     }
+  });
+
+  test("response has trace header", function () {
+    const headers = res.getHeaders();
+    expect(headers).to.have.property("x-trace-id");
   });
 }

@@ -1,0 +1,32 @@
+meta {
+  name: GET-BY-ID-NOT-FOUND
+  type: http
+  seq: 21
+}
+
+get {
+  url: http://{{url}}:{{port}}/{{version}}/users/{{missing_user_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+vars {
+  // Valid UUID that should not exist in any fresh DB
+  missing_user_id: 00000000-0000-0000-0000-000000000000
+}
+
+tests {
+  test("GET /users/{id} not found returns 404 with error contract", function () {
+    expect(res.getStatus()).to.equal(404);
+
+    const body = res.getBody();
+    expect(body).to.have.property("code", "user.not_found");
+    expect(body).to.have.property("message");
+    expect(body).to.have.property("details");
+    expect(body).to.have.property("trace_id");
+  });
+}

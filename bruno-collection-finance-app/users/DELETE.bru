@@ -15,7 +15,18 @@ auth:bearer {
 }
 
 tests {
-  test("delete user returns 204", function () {
+  test("DELETE /users/{id} returns 204", function () {
     expect(res.getStatus()).to.equal(204);
+  });
+
+  test("DELETE /users/{id} returns empty body", function () {
+    const body = res.getBody();
+    // Bruno returns '' for empty body
+    expect(body === "" || body === null || body === undefined).to.equal(true);
+  });
+
+  test("response has trace header", function () {
+    const headers = res.getHeaders();
+    expect(headers).to.have.property("x-trace-id");
   });
 }

@@ -1,0 +1,21 @@
+meta {
+  name: DELETE-UNAUTHORIZED
+  type: http
+  seq: 23
+}
+
+delete {
+  url: http://{{url}}:{{port}}/{{version}}/users/{{user_id}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("DELETE /users/{id} without token returns 401", function () {
+    expect(res.getStatus()).to.equal(401);
+
+    const body = res.getBody();
+    expect(body).to.have.property("code", "UNAUTHORIZED");
+    expect(body).to.have.property("trace_id");
+  });
+}
