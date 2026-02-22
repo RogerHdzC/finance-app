@@ -58,11 +58,14 @@ class RefreshTokenService:
         if not row:
             raise UnauthorizedError(code="UNAUTHORIZED", detail="Invalid refresh token.")
 
-        if row.revoked_at is not None:
-            raise ConflictError(code="CONFLICT", detail="Refresh token has been revoked.")
-
         if _as_utc_aware(row.expires_at) <= _now():
             raise UnauthorizedError(code="UNAUTHORIZED", detail="Invalid refresh token.")
+        
+        if row.revoked_at is not None:
+            if row.replaced_by_id is not None:
+                RefreshTokenService.revoke_all_for_user(db=db, user_id=row.user_id)
+                raise UnauthorizedError(code="TOKEN_REUSE", detail="Refresh token reuse detected.")
+            raise ConflictError(code="CONFLICT", detail="Refresh token has been revoked.")
 
         return row
 
@@ -84,10 +87,27 @@ class RefreshTokenService:
             replaced_by_id=None,
         )
         db.add(new_row)
-
+        db.flush()
         # Revoke old token and link
         row.revoked_at = _now()
         row.replaced_by_id = new_row.id
 
         db.commit()
+        db.refresh(new_row)
         return new_plain
+    
+    @staticmethod
+    def revoke_all_for_user(db: Session, *, user_id: UUID) -> int:
+        """
+        Revoke every non-revoked refresh token for the user.
+        Returns number of rows affected.
+        """
+        now = _now()
+        q = (
+            db.query(RefreshToken)
+            .filter(RefreshToken.user_id == user_id)
+            .filter(RefreshToken.revoked_at.is_(None))
+        )
+        count = q.update({RefreshToken.revoked_at: now}, synchronize_session=False)
+        db.commit()
+        return count

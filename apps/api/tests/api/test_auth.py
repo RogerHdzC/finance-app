@@ -68,8 +68,25 @@ def test_refresh_200_rotates_if_enabled(client):
     assert body["access_token"]
     assert body["refresh_token"]
     assert body["expires_in"] > 0
+    
+    assert body["refresh_token"] != old_refresh
+    
+    reuse = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert reuse.status_code in (401, 409)
+    
+def test_refresh_reuse_revokes_family(client):
+    register_user(client)
+    login = login_user(client).json()
+    old = login["refresh_token"]
 
-    # si rotate=true, refresh debe cambiar
-    if body["refresh_token"] != old_refresh:
-        reuse = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
-        assert reuse.status_code in (401, 409)
+    r1 = client.post("/api/v1/auth/refresh", json={"refresh_token": old})
+    assert r1.status_code == 200
+    new = r1.json()["refresh_token"]
+    assert new != old
+
+    reuse = client.post("/api/v1/auth/refresh", json={"refresh_token": old})
+    assert reuse.status_code == 401
+    assert reuse.json()["code"] == "TOKEN_REUSE"
+
+    r2 = client.post("/api/v1/auth/refresh", json={"refresh_token": new})
+    assert r2.status_code in (401, 409)
