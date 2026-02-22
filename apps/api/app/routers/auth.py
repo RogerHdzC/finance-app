@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_db
 from app.core.openapi import COMMON_ERROR_RESPONSES
+from app.core.security_http import _require_allowed_origin
 from app.services.auth import AuthService
 from app.schemas.user import UserCreate, UserRead
 from app.schemas.auth import AuthPayload, AuthResponse, RefreshPayload, RefreshResponse
@@ -36,11 +37,13 @@ def create_user(
 )
 def login(
     payload: AuthPayload,
+    request: Request,
     db: Session = Depends(get_db)
 ) -> AuthResponse:
     """
     Authenticate a user and return an access token.
     """
+    _require_allowed_origin(request)
     user, jwt_token, expires_in, refresh_token = AuthService.authenticate_user(
     db=db,
     identifier=payload.identifier,
