@@ -22,11 +22,17 @@ tests {
 
     const body = res.getBody();
     expect(body).to.have.property("access_token");
+    expect(body).to.have.property("refresh_token");
+    expect(body).to.have.property("token_type");
+    expect(body).to.have.property("expires_in");
 
+    // store new tokens
     bru.setVar("access_token", body.access_token);
+    bru.setVar("refresh_token", body.refresh_token);
+  });
 
-    if (body.refresh_token) {
-      bru.setVar("refresh_token", body.refresh_token);
-    }
+  test("response has trace header", function () {
+    const headers = res.getHeaders();
+    expect(headers).to.have.property("x-trace-id");
   });
 }

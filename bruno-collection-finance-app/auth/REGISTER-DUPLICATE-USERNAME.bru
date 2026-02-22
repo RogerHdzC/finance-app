@@ -1,0 +1,31 @@
+meta {
+  name: REGISTER-DUPLICATE-USERNAME
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://{{url}}:{{port}}/{{version}}/auth/register
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "John",
+    "lastname": "DuplicateUsername",
+    "username": "{{username}}",
+    "email": "dupe_un_{{$timestamp}}@doe.com",
+    "password": "Str0ngPassw0rd!"
+  }
+}
+
+tests {
+  test("register with duplicate username returns 409", function () {
+    expect(res.getStatus()).to.equal(409);
+
+    const body = res.getBody();
+    expect(body).to.have.property("code", "user.username_already_exists");
+    expect(body).to.have.property("trace_id");
+  });
+}

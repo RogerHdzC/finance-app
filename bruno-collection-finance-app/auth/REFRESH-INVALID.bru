@@ -1,0 +1,27 @@
+meta {
+  name: REFRESH-INVALID
+  type: http
+  seq: 8
+}
+
+post {
+  url: http://{{url}}:{{port}}/{{version}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refresh_token": "rft_invalid_token_value_for_test"
+  }
+}
+
+tests {
+  test("refresh with invalid token returns 401 UNAUTHORIZED", function () {
+    expect(res.getStatus()).to.equal(401);
+
+    const body = res.getBody();
+    expect(body).to.have.property("code", "UNAUTHORIZED");
+    expect(body).to.have.property("trace_id");
+  });
+}

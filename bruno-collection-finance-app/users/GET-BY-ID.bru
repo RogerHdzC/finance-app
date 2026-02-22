@@ -15,8 +15,26 @@ auth:bearer {
 }
 
 tests {
-  const json = res.json();
-  expect(res.status).to.equal(200);
-  expect(json).to.have.property('id');
-  expect(json.id).to.equal(bru.getVar('user_id'));
+  test("GET /users/{id} returns 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("response has expected user fields", function () {
+    const body = res.getBody();
+
+    expect(body).to.have.property("id");
+    expect(body).to.have.property("name");
+    expect(body).to.have.property("lastname");
+    expect(body).to.have.property("username");
+    expect(body).to.have.property("email");
+
+    // timestamps (from TimeStampBase)
+    expect(body).to.have.property("created_at");
+    expect(body).to.have.property("updated_at");
+  });
+
+  test("response has trace header", function () {
+    const headers = res.getHeaders();
+    expect(headers).to.have.property("x-trace-id");
+  });
 }

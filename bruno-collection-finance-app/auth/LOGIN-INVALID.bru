@@ -1,0 +1,29 @@
+meta {
+  name: LOGIN-INVALID
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://{{url}}:{{port}}/{{version}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "identifier": "{{username}}",
+    "password": "WrongPassw0rd!"
+  }
+}
+
+tests {
+  test("login with invalid credentials returns 401 with error contract", function () {
+    expect(res.getStatus()).to.equal(401);
+
+    const body = res.getBody();
+    expect(body).to.have.property("code", "auth.authentication_failed");
+    expect(body).to.have.property("message");
+    expect(body).to.have.property("trace_id");
+  });
+}
