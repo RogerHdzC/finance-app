@@ -7,7 +7,7 @@ from typing import Any
 
 from app.db.base_class import Base
 from app.models.mixin.timestamp import TimestampMixin
-from sqlalchemy import String, Numeric, Enum as SAEnum, Index, UniqueConstraint
+from sqlalchemy import String, Numeric, Enum as SAEnum, Index, UniqueConstraint, JSON
 from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -37,7 +37,7 @@ class Transaction(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     source: Mapped[TransactionSource] = mapped_column(SAEnum(TransactionSource, name="transaction_source", create_type=True), nullable=False)  # e.g., 'manual', 'imported', etc.
     external_id: Mapped[str | None] = mapped_column(String(100), nullable=True)  # ID from external systems if applicable
-    raw_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)  # Store raw JSON or data from external sources
+    raw_payload: Mapped[dict[str, Any] | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)  # Store raw JSON or data from external sources
     hash_dedupe: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # SHA-256 hash for deduplication
     
     __table_args__ = (
